@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Currency Download Toolkit</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --ink:#1f2937; --muted:#6b7280;
+    --line:#e5e7eb; --head:#1f3864; --accent:#e11d48; --accent2:#2563eb;
+    --ok:#059669;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:24px 16px;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  h1{font-size:26px;margin:0 0 4px;display:flex;align-items:center;gap:10px;}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:20px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:20px;margin-bottom:18px;box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  .drop{border:2px dashed #c7cedb;border-radius:12px;padding:28px;text-align:center;
+    color:var(--muted);cursor:pointer;transition:.15s;background:#fafbff;}
+  .drop:hover,.drop.drag{border-color:var(--accent2);background:#eef3ff;color:var(--accent2);}
+  .drop strong{color:var(--ink);}
+  input[type=file]{display:none;}
+  .btn{display:inline-flex;align-items:center;gap:8px;border:none;border-radius:10px;
+    padding:11px 18px;font-size:15px;font-weight:600;cursor:pointer;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#be123c;}
+  .btn-ghost{background:#eef2f7;color:var(--ink);}
+  .btn-ghost:hover{background:#e2e8f0;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px;}
+  .pill{font-size:13px;color:var(--muted);}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin-top:6px;}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:right;}
+  th{background:var(--head);color:#fff;font-weight:600;text-align:center;}
+  td:first-child,th:first-child{text-align:center;}
+  tr:nth-child(even) td{background:#f8fafc;}
+  .fhead{display:flex;justify-content:space-between;align-items:center;
+    gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+  .fhead h3{margin:0;font-size:17px;}
+  .tag{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;color:#fff;}
+  .tag.USD{background:#2563eb;} .tag.JPY{background:#7c3aed;}
+  .meta{font-size:13px;color:var(--muted);}
+  .err{color:var(--accent);font-size:13px;margin-top:8px;}
+  .empty{color:var(--muted);font-size:14px;text-align:center;padding:20px;}
+  .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;}
+  .tabbtn{flex:0 0 auto;border:1px solid var(--line);background:var(--card);
+    color:var(--muted);border-radius:10px;padding:10px 22px;font-size:15px;
+    font-weight:600;cursor:pointer;transition:.15s;}
+  .tabbtn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .tabpane{display:none;}
+  .tabpane.active{display:block;}
+  @media(prefers-color-scheme:dark){
+    :root{--bg:#0f1420;--card:#171d2b;--ink:#e5e9f0;--muted:#9aa5b8;
+      --line:#2a3344;--head:#243356;}
+    .drop{background:#1a2030;border-color:#39435a;}
+    .drop:hover,.drop.drag{background:#1e2742;}
+    .btn-ghost{background:#222b3c;color:var(--ink);}
+    tr:nth-child(even) td{background:#1b2230;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>💱 Currency Download Toolkit</h1>
+  <div class="sub">Pengolah Kurs Transaksi Bank Indonesia (USD &amp; JPY) · oleh Tri Noviantoro</div>
+
+  <div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <button class="btn btn-primary" id="dlAll" disabled>⬇️ Download Semua (USD + JPY) — 1 file</button>
+    <span class="pill" id="allInfo">Upload data di tab USD dan JPY, lalu unduh satu file berisi keduanya.</span>
+  </div>
+
+  <div class="tabs">
+    <button class="tabbtn active" data-cur="USD">🇺🇸 USD</button>
+    <button class="tabbtn" data-cur="JPY">🇯🇵 JPY</button>
+  </div>
+
+  <!-- ===== TAB USD ===== -->
+  <div class="tabpane active" data-pane="USD">
+    <div class="card">
+      <label class="drop" data-cur="USD">
+        <input type="file" accept=".xlsx,.xls" multiple data-cur="USD">
+        <div>📂 <strong>Upload file Excel USD</strong> dari situs BI</div>
+        <div class="pill" style="margin-top:6px">Bisa beberapa file sekaligus (beberapa bulan)</div>
+      </label>
+      <div class="row">
+        <button class="btn btn-ghost" data-clear="USD" disabled>🗑️ Bersihkan</button>
+        <button class="btn btn-primary" data-dl="USD" disabled>⬇️ Download USD (Excel)</button>
+        <span class="pill" data-count="USD"></span>
+      </div>
+      <div class="err" data-err="USD"></div>
+    </div>
+    <div data-out="USD"></div>
+  </div>
+
+  <!-- ===== TAB JPY ===== -->
+  <div class="tabpane" data-pane="JPY">
+    <div class="card">
+      <label class="drop" data-cur="JPY">
+        <input type="file" accept=".xlsx,.xls" multiple data-cur="JPY">
+        <div>📂 <strong>Upload file Excel JPY</strong> dari situs BI</div>
+        <div class="pill" style="margin-top:6px">Bisa beberapa file sekaligus (beberapa bulan)</div>
+      </label>
+      <div class="row">
+        <button class="btn btn-ghost" data-clear="JPY" disabled>🗑️ Bersihkan</button>
+        <button class="btn btn-primary" data-dl="JPY" disabled>⬇️ Download JPY (Excel)</button>
+        <span class="pill" data-count="JPY"></span>
+      </div>
+      <div class="err" data-err="JPY"></div>
+    </div>
+    <div data-out="JPY"></div>
+  </div>
+
+  <div class="foot">
+    Semua pemrosesan terjadi di browser Anda. Tidak ada data yang dikirim ke server.<br>
+    JPY ditampilkan per 100 JPY, sesuai data BI. Average = (Sell + Buy) / 2.
+  </div>
+</div>
+
+<script>
+// ---------- util ----------
+function parseNum(v){
+  if(v===null||v===undefined) return null;
+  if(typeof v==="number") return v;
+  let s=String(v).replace(/[^0-9,.\-]/g,"");
+  if(!s) return null;
+  // format Indonesia: titik ribuan, koma desimal
+  if(s.indexOf(",")>=0 && s.indexOf(".")>=0){
+    if(s.lastIndexOf(",")>s.lastIndexOf(".")) s=s.replace(/\./g,"").replace(",",".");
+    else s=s.replace(/,/g,"");
+  }else if(s.indexOf(",")>=0){
+    s=s.replace(",",".");           // hanya koma -> desimal (mis. "1,00")
+  }
+  const n=parseFloat(s);
+  return isNaN(n)?null:n;
+}
+function parseDate(v){
+  if(v instanceof Date) return v;
+  if(typeof v==="number"){ // excel serial
+    const d=XLSX.SSF.parse_date_code(v);
+    if(d) return new Date(d.y,d.m-1,d.d);
+  }
+  const s=String(v).trim();
+  let m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); // M/D/YYYY
+  if(m) return new Date(+m[3],+m[1]-1,+m[2]);
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3]);
+  return null;
+}
+function fmtDate(d){
+  const p=n=>String(n).padStart(2,"0");
+  return p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear();
+}
+function fmtID(x,dec){
+  return x.toLocaleString("id-ID",{minimumFractionDigits:dec,maximumFractionDigits:dec});
+}
+function detectCurrency(name, nilai){
+  const u=name.toUpperCase();
+  if(u.includes("JPY")) return "JPY";
+  if(u.includes("USD")) return "USD";
+  if(nilai && nilai>=50) return "JPY";   // Nilai 100 -> JPY
+  return "USD";
+}
+const BULAN=["Januari","Februari","Maret","April","Mei","Juni",
+  "Juli","Agustus","September","Oktober","November","Desember"];
+// Format rata-rata sesuai app.py:
+//   USD -> bulat, titik ribuan (17.877)
+//   JPY -> dibagi 100, 2 desimal (113,27)
+function fmtAvg(currency, x){
+  if(currency==="JPY") return fmtID(x/100, 2);
+  return fmtID(Math.round(x), 0);
+}
+
+// ---------- state (per currency) ----------
+const store={USD:[], JPY:[]}; // {name, currency, rows:[...]}
+
+// ---------- parse one workbook ----------
+function processWorkbook(wb, fname){
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const aoa=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});
+  // cari baris header (yang memuat "Kurs Jual" / "Tanggal")
+  let hIdx=-1, col={};
+  for(let i=0;i<aoa.length;i++){
+    const r=(aoa[i]||[]).map(c=>String(c||"").toLowerCase());
+    const jual=r.findIndex(c=>c.includes("jual"));
+    const beli=r.findIndex(c=>c.includes("beli"));
+    const tgl =r.findIndex(c=>c.includes("tanggal"));
+    const nil =r.findIndex(c=>c.includes("nilai"));
+    if(jual>=0&&beli>=0&&tgl>=0){hIdx=i;col={jual,beli,tgl,nil};break;}
+  }
+  if(hIdx<0) throw new Error("Header (Kurs Jual/Beli/Tanggal) tidak ditemukan.");
+
+  const rows=[]; let nilaiSample=null;
+  for(let i=hIdx+1;i<aoa.length;i++){
+    const r=aoa[i]; if(!r) continue;
+    const d=parseDate(r[col.tgl]);
+    const sell=parseNum(r[col.jual]);
+    const buy=parseNum(r[col.beli]);
+    if(col.nil>=0 && nilaiSample===null) nilaiSample=parseNum(r[col.nil]);
+    if(d && sell!==null && buy!==null){
+      rows.push({date:d, sell, buy, avg:Math.round(((sell+buy)/2)*100)/100});
+    }
+  }
+  if(!rows.length) throw new Error("Tidak ada baris data yang terbaca.");
+  rows.sort((a,b)=>a.date-b.date);
+  const currency=detectCurrency(fname, nilaiSample);
+  return {name:fname, currency, rows};
+}
+
+// ---------- render ----------
+function render(cur){
+  const out=document.querySelector(`[data-out="${cur}"]`);
+  out.innerHTML="";
+  const datasets=store[cur];
+  if(!datasets.length){
+    out.innerHTML='<div class="card"><div class="empty">Belum ada data '+cur+'. Unggah file Excel '+cur+' dari BI untuk mulai.</div></div>';
+    return;
+  }
+  datasets.forEach((ds,di)=>{
+    const dec=2;
+    const card=document.createElement("div");
+    card.className="card";
+
+    // --- tentukan bulan dominan (bulan dengan data terbanyak) ---
+    const byYM={};
+    ds.rows.forEach(r=>{
+      const key=r.date.getFullYear()+"-"+r.date.getMonth();
+      (byYM[key]=byYM[key]||[]).push(r);
+    });
+    const ymKeys=Object.keys(byYM).sort((a,b)=>byYM[b].length-byYM[a].length);
+    const [yy,mm]=ymKeys[0].split("-").map(Number);
+    const rowsMonth=byYM[ymKeys[0]];
+    const map={}; rowsMonth.forEach(r=>{ map[r.date.getDate()]=r; });
+    const daysInMonth=new Date(yy,mm+1,0).getDate();
+
+    // rata-rata HANYA dari hari berdata (ikut app.py)
+    const filled=rowsMonth;
+    const avgSell=filled.reduce((s,r)=>s+r.sell,0)/filled.length;
+    const avgBuy =filled.reduce((s,r)=>s+r.buy,0)/filled.length;
+    const avgAvg =filled.reduce((s,r)=>s+r.avg,0)/filled.length;
+
+    let html=`<div class="fhead">
+        <h3>${ds.name} <span class="tag ${ds.currency}">${ds.currency}</span></h3>
+        <span class="meta">${BULAN[mm]} ${yy} · ${filled.length} hari berdata</span>
+      </div>`;
+
+    // --- Kalender penuh 1..akhir bulan, kosong = 0 ---
+    html+="<table><thead><tr><th>Tanggal</th><th>Sell</th><th>Buy</th><th>Average</th></tr></thead><tbody>";
+    for(let d=1; d<=daysInMonth; d++){
+      const r=map[d];
+      const tgl=String(d).padStart(2,"0")+"/"+String(mm+1).padStart(2,"0")+"/"+yy;
+      if(r){
+        html+=`<tr><td>${tgl}</td><td>${fmtID(r.sell,dec)}</td><td>${fmtID(r.buy,dec)}</td><td>${fmtID(r.avg,dec)}</td></tr>`;
+      }else{
+        html+=`<tr><td>${tgl}</td><td>0</td><td>0</td><td>0</td></tr>`;
+      }
+    }
+    html+="</tbody></table>";
+
+    // --- Tabel Rata-rata (format app.py) ---
+    const catatan = ds.currency==="JPY" ? " (JPY per 1 yen, dibagi 100)" : "";
+    html+=`<h3 style="margin:18px 0 6px;font-size:16px">📊 Rata-rata${catatan}</h3>`;
+    html+="<table><thead><tr><th>Keterangan</th><th>Sell</th><th>Buy</th><th>Average</th></tr></thead><tbody>";
+    html+=`<tr><td>${BULAN[mm]} ${yy}</td>
+      <td>${fmtAvg(ds.currency,avgSell)}</td>
+      <td>${fmtAvg(ds.currency,avgBuy)}</td>
+      <td>${fmtAvg(ds.currency,avgAvg)}</td></tr>`;
+    html+="</tbody></table>";
+
+    card.innerHTML=html;
+    out.appendChild(card);
+  });
+}
+
+// ---------- export excel (ExcelJS, ber-border) ----------
+const BORDER_THIN={top:{style:"thin",color:{argb:"FFB0B0B0"}},
+  left:{style:"thin",color:{argb:"FFB0B0B0"}},
+  bottom:{style:"thin",color:{argb:"FFB0B0B0"}},
+  right:{style:"thin",color:{argb:"FFB0B0B0"}}};
+
+function addSheet(wbx, ds){
+  // bulan dominan
+  const byYM={};
+  ds.rows.forEach(r=>{const k=r.date.getFullYear()+"-"+r.date.getMonth();(byYM[k]=byYM[k]||[]).push(r);});
+  const ymKeys=Object.keys(byYM).sort((a,b)=>byYM[b].length-byYM[a].length);
+  const [yy,mm]=ymKeys[0].split("-").map(Number);
+  const rowsMonth=byYM[ymKeys[0]];
+  const map={}; rowsMonth.forEach(r=>map[r.date.getDate()]=r);
+  const daysInMonth=new Date(yy,mm+1,0).getDate();
+  const isJPY=ds.currency==="JPY";
+
+  // nama sheet unik <=31
+  let base=(ds.currency+" "+BULAN[mm].slice(0,3)+" "+yy);
+  let nm=base.slice(0,28), k=1;
+  while(wbx.worksheets.some(w=>w.name===nm)){ nm=(base+" "+(++k)).slice(0,31); }
+  const ws=wbx.addWorksheet(nm);
+
+  ws.columns=[{width:14},{width:13},{width:13},{width:13}];
+
+  // Judul (merge A1:D1)
+  ws.mergeCells("A1:D1");
+  const title=ws.getCell("A1");
+  title.value="Kurs Transaksi "+ds.currency+" - "+BULAN[mm]+" "+yy+
+              (isJPY?"  (per 100 JPY)":"  (per 1 USD)");
+  title.font={bold:true,size:13};
+  title.alignment={horizontal:"center",vertical:"middle"};
+
+  // Header (baris 3)
+  const headRow=ws.getRow(3);
+  ["Tanggal","Sell","Buy","Average"].forEach((h,i)=>{
+    const c=headRow.getCell(i+1);
+    c.value=h;
+    c.font={bold:true,color:{argb:"FFFFFFFF"}};
+    c.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FF1F3864"}};
+    c.alignment={horizontal:"center",vertical:"middle"};
+    c.border=BORDER_THIN;
+  });
+
+  const numFmt="#,##0.00";
+  let r=4;
+  for(let d=1; d<=daysInMonth; d++){
+    const rec=map[d];
+    const tgl=String(d).padStart(2,"0")+"/"+String(mm+1).padStart(2,"0")+"/"+yy;
+    const row=ws.getRow(r);
+    row.getCell(1).value=tgl;
+    if(rec){
+      row.getCell(2).value=rec.sell;
+      row.getCell(3).value=rec.buy;
+      row.getCell(4).value=rec.avg;
+    }else{
+      row.getCell(2).value=0;
+      row.getCell(3).value=0;
+      row.getCell(4).value=0;
+    }
+    for(let c=1;c<=4;c++){
+      const cell=row.getCell(c);
+      cell.border=BORDER_THIN;
+      cell.alignment={horizontal:"center"};
+      if(c>=2) cell.numFmt=numFmt;
+    }
+    r++;
+  }
+
+  // Baris rata-rata (format app.py)
+  r++; // satu baris kosong
+  const f=rowsMonth;
+  const aS=f.reduce((s,x)=>s+x.sell,0)/f.length;
+  const aB=f.reduce((s,x)=>s+x.buy,0)/f.length;
+  const aA=f.reduce((s,x)=>s+x.avg,0)/f.length;
+  const conv=x=> isJPY ? Math.round(x/100*100)/100 : Math.round(x);
+  const avgRow=ws.getRow(r);
+  avgRow.getCell(1).value="Rata-rata"+(isJPY?" (/100)":"");
+  avgRow.getCell(2).value=conv(aS);
+  avgRow.getCell(3).value=conv(aB);
+  avgRow.getCell(4).value=conv(aA);
+  for(let c=1;c<=4;c++){
+    const cell=avgRow.getCell(c);
+    cell.font={bold:true};
+    cell.border=BORDER_THIN;
+    cell.alignment={horizontal:c===1?"left":"center"};
+    if(c>=2) cell.numFmt = isJPY ? "#,##0.00" : "#,##0";
+  }
+}
+
+async function exportBook(datasets, fname){
+  const wbx=new ExcelJS.Workbook();
+  datasets.forEach(ds=>addSheet(wbx, ds));
+  const buf=await wbx.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=fname;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+
+function downloadExcel(cur){
+  if(!store[cur].length) return;
+  exportBook(store[cur], "Kurs_"+cur+"_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
+function downloadAll(){
+  const all=[...store.USD, ...store.JPY];
+  if(!all.length) return;
+  exportBook(all, "Kurs_USD_JPY_"+new Date().toISOString().slice(0,10)+".xlsx");
+}
+
+// ---------- events (per currency) ----------
+function handleFiles(cur, files){
+  const errBox=document.querySelector(`[data-err="${cur}"]`);
+  errBox.textContent="";
+  const errs=[];
+  let pending=files.length;
+  if(!pending) return;
+  Array.from(files).forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:"array"});
+        const ds=processWorkbook(wb, f.name);
+        if(ds.currency!==cur){
+          errs.push(f.name+": terdeteksi sebagai "+ds.currency+", bukan "+cur+". Upload di tab "+ds.currency+".");
+        }else{
+          store[cur].push(ds);
+        }
+      }catch(ex){ errs.push(f.name+": "+ex.message); }
+      if(--pending===0) finish(cur, errs);
+    };
+    reader.onerror=()=>{ errs.push(f.name+": gagal dibaca"); if(--pending===0) finish(cur, errs); };
+    reader.readAsArrayBuffer(f);
+  });
+}
+function finish(cur, errs){
+  render(cur);
+  const n=store[cur].length;
+  document.querySelector(`[data-count="${cur}"]`).textContent = n? (n+" file dimuat") : "";
+  document.querySelector(`[data-dl="${cur}"]`).disabled = !n;
+  document.querySelector(`[data-clear="${cur}"]`).disabled = !n;
+  const errBox=document.querySelector(`[data-err="${cur}"]`);
+  errBox.innerHTML = errs.length? errs.join("<br>") : "";
+  // tombol download semua
+  const total=store.USD.length+store.JPY.length;
+  document.getElementById("dlAll").disabled = !total;
+}
+
+// Tab switching
+document.querySelectorAll(".tabbtn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const cur=btn.dataset.cur;
+    document.querySelectorAll(".tabbtn").forEach(b=>b.classList.toggle("active", b===btn));
+    document.querySelectorAll(".tabpane").forEach(p=>
+      p.classList.toggle("active", p.dataset.pane===cur));
+  });
+});
+
+// File inputs + drag/drop per tab
+document.querySelectorAll('input[type=file][data-cur]').forEach(inp=>{
+  inp.addEventListener("change", e=>{
+    handleFiles(inp.dataset.cur, e.target.files); inp.value="";
+  });
+});
+document.querySelectorAll('.drop[data-cur]').forEach(drop=>{
+  const cur=drop.dataset.cur;
+  drop.addEventListener("dragover", e=>{e.preventDefault();drop.classList.add("drag");});
+  drop.addEventListener("dragleave", ()=>drop.classList.remove("drag"));
+  drop.addEventListener("drop", e=>{
+    e.preventDefault(); drop.classList.remove("drag");
+    handleFiles(cur, e.dataTransfer.files);
+  });
+});
+document.querySelectorAll('[data-dl]').forEach(b=>
+  b.addEventListener("click", ()=>downloadExcel(b.dataset.dl)));
+document.getElementById("dlAll").addEventListener("click", downloadAll);
+document.querySelectorAll('[data-clear]').forEach(b=>
+  b.addEventListener("click", ()=>{ store[b.dataset.clear]=[]; finish(b.dataset.clear, []); }));
+
+render("USD"); render("JPY");
+</script>
+</body>
+</html>
